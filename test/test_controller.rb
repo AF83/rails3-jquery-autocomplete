@@ -70,6 +70,22 @@ module Rails3JQueryAutocomplete
         assert_equal("Alzpha", json_response.first["label"])
       end
 
+      should "not filter the results when key is not in request params" do
+        @controller.class_eval do
+          autocomplete :movie, :name, {:filter_params => [:movie_type]}
+        end
+
+        get :autocomplete_movie_name, :term => 'Al'
+        json_response = JSON.parse(@response.body)
+        assert_equal(3, json_response.length)
+        assert_equal(json_response.first["label"], @movie1.name)
+        assert_equal(json_response.first["value"], @movie1.name)
+        assert_equal(json_response.first["id"].to_s, @movie1.id.to_s)
+        assert_equal(json_response.last["label"], @movie3.name)
+        assert_equal(json_response.last["value"], @movie3.name)
+        assert_equal(json_response.last["id"].to_s, @movie3.id.to_s)
+      end
+
       should "ignore case of search term and results" do
         @movie = @movie_class.create(:name => 'aLpHa')
 

@@ -41,7 +41,7 @@ module Rails3JQueryAutocomplete
         if options[:filter_params]
           options[:filters] = {}
           options[:filter_params].each do |key|
-            options[:filters][key] = self.params[key]
+            options[:filters][key] = self.params[key] if self.params[key]
           end
           options.delete(:filter_params)
         end
