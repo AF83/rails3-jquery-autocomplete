@@ -13,9 +13,9 @@ module Rails3JQueryAutocomplete
 
         @controller = ActorsController.new
 
-        @movie1 = @movie_class.create(:name => 'Alpha')
-        @movie2 = @movie_class.create(:name => 'Alspha')
-        @movie3 = @movie_class.create(:name => 'Alzpha')
+        @movie1 = @movie_class.create(:name => 'Alpha', :movie_type => 'Comedy', :year => "1969")
+        @movie2 = @movie_class.create(:name => 'Alspha', :movie_type => 'Drama', :year => "2010")
+        @movie3 = @movie_class.create(:name => 'Alzpha', :movie_type => 'Porn', :year => "1942")
       end
 
       def teardown

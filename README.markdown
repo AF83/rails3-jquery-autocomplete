@@ -126,6 +126,16 @@ In the example above, you will search by _name_, but the autocomplete list will 
 
 This wouldn't really make much sense unless you use it with the :id_element HTML tag. (See below)
 
+#### :filter_params
+
+You can specify an array of filters retrieved from controller params
+
+    class ProductsController < Admin::BaseController
+      autocomplete :brand, :name, :filter_params => [:type, :category]
+    end
+
+This will automatically add {:type => params[:type], :category => params[:category]} to your request
+
 ### View
 
 On your view, all you have to do is include the attribute autocomplete on the text field

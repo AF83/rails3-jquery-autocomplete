@@ -75,6 +75,14 @@ module Rails3JQueryAutocomplete
       get_autocomplete_items(parameters)
     end
 
+    # Return the filtered model
+    def get_autocomplete_filters(model, options)
+      if options[:filters]
+        model = model.where(options[:filters])
+      end
+      model
+    end
+
     #
     # Can be overriden to return or filter however you like
     # the objects to be shown by autocomplete
@@ -91,6 +99,7 @@ module Rails3JQueryAutocomplete
       limit = get_autocomplete_limit(options)
       implementation = get_implementation(model)
       order = get_autocomplete_order(implementation, method, options)
+      model = get_autocomplete_filters(model, options)
 
       case implementation
         when :mongoid

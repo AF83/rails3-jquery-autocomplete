@@ -59,6 +59,17 @@ module Rails3JQueryAutocomplete
         assert_equal(json_response.length, 1)
       end
 
+      should "be able to filter the results" do
+        @controller.class_eval do
+          autocomplete :movie, :name, {:filter_params => [:movie_type, :year]}
+        end
+
+        get :autocomplete_movie_name, :term => 'Al', :movie_type => "Porn", :year => "1942"
+        json_response = JSON.parse(@response.body)
+        assert_equal(1, json_response.length)
+        assert_equal("Alzpha", json_response.first["label"])
+      end
+
       should "ignore case of search term and results" do
         @movie = @movie_class.create(:name => 'aLpHa')
 
