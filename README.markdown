@@ -42,7 +42,7 @@ Install it
 Run the generator
 
     rails generate autocomplete
-    
+
 And include autocomplete-rails.js on your layouts
 
     javascript_include_tag "autocomplete-rails.js"
@@ -83,6 +83,39 @@ This will create an action _autocomplete_brand_name_ on your controller, don't f
       get :autocomplete_brand_name, :on => :collection
     end
 
+This example will display all the brands that have a name matching the pattern you specify in your autocomplete text-field
+
+### Limit the results based on the model relations:
+
+Imagine we have a Product and a Brand model linked by a 'has_many' relation:
+
+    class Brand < ActiveRecord::Base
+      has_many :products
+    end
+
+    class Product < ActiveRecord::Base
+      belongs_to :brand
+    end
+
+In the show view of the BrandsController you have a search_field used to find a product of the current brand object.
+You want this field to do autocompletion on the name attribute of the product model.
+You don't want to querry on all the products existing in the database but only to the products that belongs to the current brand object.
+
+To do that you first need to add the autocomplete action to your brand controller:
+
+  class BrandsController < Admin::BaseController
+    autocomplete :product, :name
+  end
+
+In your routes file you'll not add a "collection" but a "member" entry to the brands resources:
+
+  resources :brands do
+    get :autocomplete_product_name, :on => :member
+  end
+
+As this is a member route, the "autocomplete_product_name" method of your BrandController will get a params[:id].
+The search will retreive the brand object thanks to this id and will only search for matching products within: brand.products
+
 ### Options
 
 #### :full => true
@@ -104,6 +137,40 @@ The following terms would match the query 'un':
 Only the following terms mould match the query 'un':
 
 * Unacceptable
+
+#### :parent_class_name
+
+When you limit the results based on the model relations (see example above), the parent model name ('Brand' in the example) is guessed based on the name of the controller where you added the 'autocomplete' statement. (controller name: 'BrandsController' => model name: 'Brand').
+
+If you don't have this naming convention for you model-controllers, you can pass the parent_class_name as a parameter:
+
+  class BrandsController < Admin::BaseController
+    autocomplete :product, :name, :parent_class_name => "MyBrand"
+  end
+
+The autocomplete_product_name method will then retreive the parent object with: MyBrand.find(params[:id])
+
+#### :relation_name
+
+When you limit the results based on the model relations (see example above), we use the name of the model on which you autocomplete to find the relation name:
+
+  autocomplete :product, :name
+
+Here, the model name is 'product', we assume then that the brand model has_many :products (the results will be filtered within brand.products)
+But in the case you have a relation like:
+
+  class Brand < ActiveRecord::Base
+    has_many :nice_products, :class_name => "Product"
+  end
+
+Then brand.products will not work.
+You then need to specify the :relation_name parameter:
+
+  class BrandsController < Admin::BaseController
+    autocomplete :product, :name, :relation_name => "nice_products"
+  end
+
+The results will then be filtered within: brand.nice_products
 
 #### :display_value
 
@@ -136,6 +203,20 @@ You can specify an array of filters retrieved from controller params
 
 This will automatically add {:type => params[:type], :category => params[:category]} to your request
 
+#### :scope and :scopes
+
+If you want the autocomplete results to be found based on a model scope instead of on a model attibute you can set the :scope or :scopes option.
+
+    class ProductsController < Admin::BaseController
+      autocomplete :brand, :name, :scope => "a_scope", :display_value => :name
+      #or
+      autocomplete :brand, :name, :scopes => ["first_scope", "second_scope"], :display_value => :name
+    end
+
+The last scope we receive the 'term' value as parameter.
+
+If you don't set the :display_value option, the second attribute will be use for the display value.
+
 ### View
 
 On your view, all you have to do is include the attribute autocomplete on the text field
@@ -156,7 +237,20 @@ If you are not using a FormBuilder (form_for) or you just want to include an aut
       autocomplete_field_tag 'address', '', address_autocomplete_path, :size => 75
     end
 
+Or in the case of a "member" route (see: "Limit the results based on the model relations" above):
+
+    form_tag 'some/path'
+      autocomplete_field_tag 'search_product', '', autocomplete_product_name_brand_path(current_brand), :size => 75
+    end
+
 Now your autocomplete code is unobtrusive, Rails 3 style.
+
+### Submit on select
+
+Sometimes you may want your form to be submited as soon as you select an element in the autocomplete item list.
+You just have to set the ':submit_on_select' option to true:
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :submit_on_select => true
 
 ### Getting the object id
 
@@ -165,6 +259,88 @@ If you need to use the id of the selected object, you can use the *:id_element* 
     f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :id_element => '#some_element'
 
 This will update the field with id *#some_element with the id of the selected object. The value for this option can be any jQuery selector.
+
+### Autocomplete widget options
+
+The Jquery autocomplete widget allow the following options: 'disabled', 'appendTo', 'delay', 'minLength' and 'source' (see: http://docs.jquery.com/UI/Autocomplete#option-disabled)
+
+You can define values for these options by adding HTML tags to your 'autocomplete_field' field in the view:
+
+#### disabled
+
+Disables (true) or enables (false) the autocomplete. Can be set when initialising (first creating) the autocomplete.
+
+Default = false
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :autocomplete_disabled => true
+
+If you disable de autocomplete when initialising, you'll probably want to enable it somewhere else in your javascript code:
+
+Get or set the disabled option, after init:
+
+    //getter
+    var disabled = $( ".selector" ).autocomplete( "option", "disabled" );
+    //setter
+    $( ".selector" ).autocomplete( "option", "disabled", false );
+
+#### appendTo
+
+Which element the menu should be appended to.
+
+Default: 'body'
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :append_to => '#another_ellement'
+
+#### delay
+
+The delay in milliseconds the Autocomplete waits after a keystroke to activate itself. A zero-delay makes sense for local data (more responsive), but can produce a lot of load for remote data, while being less responsive.
+
+Default = 300
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :delay => 100
+
+#### minLength
+
+The minimum number of characters a user has to type before the Autocomplete activates. Zero is useful for local data with just a few items. Should be increased when there are a lot of items, where a single character would match a few thousand items.
+
+Default = 2
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :min_length => 0
+
+#### source
+
+Defines the data to use.
+
+The source options can obviously not be specified here since it is handled by this plugin itself.
+
+### Customize the css of the result list
+
+You can add custom css for the result list (ul, li, and/or a):
+
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :result_list_css => {:ul => {:width => "100px"}, :li => {....}, :a => {:color => "red"}}.to_json
+
+### Working client side
+
+You also have the possibility to work client side. That mean that no remote action will be called and no query will be done in the DB.
+
+If you work this way, you don't have to add anything to your controller (no "autocomplete" statment needed).
+You then also don't need to add any route in your routes.yml config file.
+
+In your view, the autocomplete_field will not take the url of a remote autocompletion method but the source elements for the autocompletion.
+
+    f.autocomplete_field :brand_name, [{:id => "my_element_id", :label => "my_element_label", :value => "my_element_value", :for_search => "pattern_for_search"}].to_json , :no_remote => true
+
+Don't forget to Jsonify your sources array.
+As an example, here we directly put the sources array in our view but it is better to constuct it in your controller.
+
+Also note that you can pass a :for_search element in your source hash. This will be the text use for the autocompletion query.
+
+### Javascript on_select
+
+If you want to persom some custom javascript when a user select an element in the autocomplete item list, you can add it via the :on_select option:
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :on_select => "alert('Hello World')"
 
 ## Formtastic
 
@@ -242,6 +418,6 @@ integration folder:
 
 # About the Author
 
-[Crowd Interactive](http://www.crowdint.com) is an American web design and development company that happens to work in Colima, Mexico. 
+[Crowd Interactive](http://www.crowdint.com) is an American web design and development company that happens to work in Colima, Mexico.
 We specialize in building and growing online retail stores. We don’t work with everyone – just companies we believe in. Call us today to see if there’s a fit.
 Find more info [here](http://www.crowdint.com)!

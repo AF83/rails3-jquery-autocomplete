@@ -20,9 +20,21 @@ module Rails3JQueryAutocomplete
       object = model_sym.to_s.camelize.constantize
     end
 
+    def get_parent(parent_class_name)
+      if parent_id = params[:id]
+        parent_class_name = parent_class_name || params[:controller].singularize
+        begin
+          parent_model = get_object(parent_class_name)
+        rescue
+          raise "Couldn't find any ActiveRecord model with name: #{parent_class_name}. Please indicate a valid model name via the :parent_class_name option."
+        end
+        parent_model.find(parent_id)
+      end
+    end
+
     # Returns a symbol representing what implementation should be used to query
     # the database and raises *NotImplementedError* if ORM implementor can not be found
-    def get_implementation(object) 
+    def get_implementation(object)
       ancestors_ary = object.ancestors.collect(&:to_s)
       if ancestors_ary.include?('ActiveRecord::Base')
         :activerecord
@@ -45,7 +57,7 @@ module Rails3JQueryAutocomplete
 
       case implementation
         when :mongoid then
-          if order 
+          if order
             order.split(',').collect do |fields|
               sfields = fields.split
               [sfields[0].downcase.to_sym, sfields[1].downcase.to_sym]
@@ -53,7 +65,7 @@ module Rails3JQueryAutocomplete
           else
             [[method.to_sym, :asc]]
           end
-        when :activerecord then 
+        when :activerecord then
           order || "#{method} ASC"
       end
     end
@@ -87,27 +99,51 @@ module Rails3JQueryAutocomplete
     # Can be overriden to return or filter however you like
     # the objects to be shown by autocomplete
     #
-    #   items = get_autocomplete_items(:model => get_object(object), :options => options, :term => term, :method => method) 
+    #   items = get_autocomplete_items(:model => get_object(object), :options => options, :term => term, :method => method)
     #
     def get_autocomplete_items(parameters)
       model = parameters[:model]
       method = parameters[:method]
       options = parameters[:options]
       term = parameters[:term]
+      parent = parameters[:parent]
       is_full_search = options[:full]
 
       limit = get_autocomplete_limit(options)
       implementation = get_implementation(model)
       order = get_autocomplete_order(implementation, method, options)
       model = get_autocomplete_filters(model, options)
+      all_scopes = [(options[:scope] || options[:scopes])].flatten.compact
+      have_scope = all_scopes.any?
 
-      case implementation
+
+      if parent
+        relation_name = options[:relation_name] || model.name.underscore.pluralize
+        initial_scope = parent.send(relation_name)
+      else
+        initial_scope = model
+      end
+      if have_scope
+        # If we use a scope the order should be done in this scope.
+        last_scope = all_scopes.pop
+        if all_scopes.any?
+          scopes_items = all_scopes.inject(initial_scope){|working_scope, new_scope| working_scope.send(new_scope.to_sym)}
+        else
+          scopes_items = initial_scope
+        end
+        items = scopes_items.send(last_scope.to_sym, term).limit(limit)
+      else
+        case implementation
         when :mongoid
+          order_method = "order_by"
           search = (is_full_search ? '.*' : '^') + term + '.*'
-          items = model.where(method.to_sym => /#{search}/i).limit(limit).order_by(order)
+          where_clause = {method.to_sym => /#{search}/i}
         when :activerecord
-          items = model.where(["LOWER(#{method}) LIKE ?", "#{(is_full_search ? '%' : '')}#{term.downcase}%"]) \
-            .limit(limit).order(order)
+          order_method = "order"
+          where_clause = ["LOWER(#{method}) LIKE ?", "#{(is_full_search ? '%' : '')}#{term.downcase}%"]
+        end
+        order = get_autocomplete_order(implementation, method, options)
+        items = initial_scope.where(where_clause).limit(limit).send(order_method, order)
       end
     end
 
