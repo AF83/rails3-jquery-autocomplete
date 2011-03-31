@@ -131,7 +131,7 @@ module Rails3JQueryAutocomplete
         else
           scopes_items = initial_scope
         end
-        items = scopes_items.send(last_scope.to_sym, term).limit(limit)
+        items = scopes_items.send(last_scope.to_sym, term, method).limit(limit)
       else
         case implementation
         when :mongoid
