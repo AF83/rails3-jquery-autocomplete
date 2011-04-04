@@ -2,9 +2,10 @@
 
 An easy way to use jQuery's autocomplete with Rails 3.
 
-In now supports both ActiveRecord and [mongoid](http://github.com/mongoid/mongoid).
+Supports both ActiveRecord and [mongoid](http://github.com/mongoid/mongoid).
 
-It also supports [Formtastic](http://github.com/justinfrench/formtastic)
+Works with [Formtastic](http://github.com/justinfrench/formtastic)
+and [SimpleForm](https://github.com/plataformatec/simple_form)
 
 ## ActiveRecord
 
@@ -172,6 +173,16 @@ You then need to specify the :relation_name parameter:
 
 The results will then be filtered within: brand.nice_products
 
+#### :extra_data
+
+By default, your search will only return the required columns from the database needed to populate your form, namely id and the column you are searching (name, in the above example).
+
+Passing an array of attributes/column names to this option will fetch and return the specified data.
+
+    class ProductsController < Admin::BaseController
+      autocomplete :brand, :name, :extra_data => [:slogan]
+    end
+
 #### :display_value
 
 If you want to display a different version of what you're looking for, you can use the :display_value option.
@@ -193,6 +204,7 @@ In the example above, you will search by _name_, but the autocomplete list will 
 
 This wouldn't really make much sense unless you use it with the :id_element HTML tag. (See below)
 
+<<<<<<< HEAD
 #### :filter_params
 
 You can specify an array of filters retrieved from controller params
@@ -216,6 +228,9 @@ If you want the autocomplete results to be found based on a model scope instead 
 The last scope we receive the 'term' value as parameter.
 
 If you don't set the :display_value option, the second attribute will be use for the display value.
+=======
+Only the object's id and the column you are searching on will be returned in JSON, so if your display_value method requires another parameter, make sure to fetch it with the :extra_data option
+>>>>>>> crowdint/master
 
 ### View
 
@@ -260,6 +275,7 @@ If you need to use the id of the selected object, you can use the *:id_element* 
 
 This will update the field with id *#some_element with the id of the selected object. The value for this option can be any jQuery selector.
 
+<<<<<<< HEAD
 ### Autocomplete widget options
 
 The Jquery autocomplete widget allow the following options: 'disabled', 'appendTo', 'delay', 'minLength' and 'source' (see: http://docs.jquery.com/UI/Autocomplete#option-disabled)
@@ -341,6 +357,21 @@ Also note that you can pass a :for_search element in your source hash. This will
 If you want to persom some custom javascript when a user select an element in the autocomplete item list, you can add it via the :on_select option:
 
     f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :on_select => "alert('Hello World')"
+=======
+### Getting extra object data
+
+If you need to extra data about the selected object, you can use the *:update_elements* HTML attribute.
+
+The :update_elements attribute accepts a hash where the keys represent the object attribute/column data to use to update and the values are jQuery selectors to retrieve the HTML element to update:
+
+    f.autocomplete_field :brand_name, autocomplete_brand_name_products_path, :update_elements => {:id => '#id_element', :slogan => '#some_other_element'}
+
+    class ProductsController < Admin::BaseController
+      autocomplete :brand, :name, :extra_data => [:slogan]
+    end
+
+The previous example would fetch the extra attribute slogan and update jQuery('#some_other_element') with the slogan value.
+>>>>>>> crowdint/master
 
 ## Formtastic
 
@@ -351,6 +382,17 @@ If you are using [Formtastic](http://github.com/justinfrench/formtastic), you au
     end
 
 The only difference with the original helper is that you must specify the autocomplete url using the *:url* option.
+
+## SimpleForm
+
+If you want to use it with simple_form, all you have to do is use the
+:as option on the input and set the autocomplete path with the :url
+option.
+
+
+    simple_form_for @product do |form|
+      form.input :name
+      form.input :brand_name, :url => autocomplete_brand_name_path, :as => :autocomplete
 
 # Cucumber
 
@@ -409,12 +451,17 @@ integration folder:
 
 # Changelog
 
+* 0.6.2 SimpleForm plugin
 * 0.6.1 Allow specifying fully qualified class name for model object as an option to autocomplete
 * 0.6.0 JS Code cleanup
 * 0.5.1 Add STI support
 * 0.5.0 Formtastic support
 * 0.4.0 MongoID support
 * 0.3.6 Using .live() to put autocomplete on dynamic fields
+
+# Thanks to
+
+Everyone on [this list](https://github.com/crowdint/rails3-jquery-autocomplete/contributors)
 
 # About the Author
 

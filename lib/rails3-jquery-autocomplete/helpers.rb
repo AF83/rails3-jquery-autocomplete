@@ -4,11 +4,18 @@ module Rails3JQueryAutocomplete
   module Helpers
 
     #
-    # Returns a three keys hash actually used by the Autocomplete jQuery-ui
+    # Returns a hash with three keys actually used by the Autocomplete jQuery-ui
     # Can be overriden to show whatever you like
+    # Hash also includes a key/value pair for each method in extra_data
     #
-    def json_for_autocomplete(items, method)
-      items.collect {|item| {"id" => item.id, "label" => item.send(method), "value" => item.send(method)}}
+    def json_for_autocomplete(items, method, extra_data)
+      items.collect do |item|
+        hash = {"id" => item.id, "label" => item.send(method), "value" => item.send(method)}
+        extra_data.each do |datum|
+          hash[datum] = item.send(datum)
+        end if extra_data
+        hash
+      end
     end
 
     # Returns parameter model_sym as a constant
@@ -102,7 +109,7 @@ module Rails3JQueryAutocomplete
     #   items = get_autocomplete_items(:model => get_object(object), :options => options, :term => term, :method => method)
     #
     def get_autocomplete_items(parameters)
-      model = parameters[:model]
+      model = relation = parameters[:model]
       method = parameters[:method]
       options = parameters[:options]
       term = parameters[:term]
@@ -139,13 +146,10 @@ module Rails3JQueryAutocomplete
           search = (is_full_search ? '.*' : '^') + term + '.*'
           where_clause = {method.to_sym => /#{search}/i}
         when :activerecord
-          order_method = "order"
-          where_clause = ["LOWER(#{method}) LIKE ?", "#{(is_full_search ? '%' : '')}#{term.downcase}%"]
-        end
-        order = get_autocomplete_order(implementation, method, options)
-        items = initial_scope.where(where_clause).limit(limit).send(order_method, order)
+          relation = model.select([:id, method] + (options[:extra_data].blank? ? [] : options[:extra_data])) unless options[:full_model]
+          items = relation.where(["LOWER(#{method}) LIKE ?", "#{(is_full_search ? '%' : '')}#{term.downcase}%"]) \
+            .limit(limit).order(order)
       end
     end
-
   end
 end
