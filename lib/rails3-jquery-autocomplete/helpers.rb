@@ -8,7 +8,7 @@ module Rails3JQueryAutocomplete
     # Can be overriden to show whatever you like
     # Hash also includes a key/value pair for each method in extra_data
     #
-    def json_for_autocomplete(items, method, extra_data)
+    def json_for_autocomplete(items, method, extra_data = nil)
       items.collect do |item|
         hash = {"id" => item.id, "label" => item.send(method), "value" => item.send(method)}
         extra_data.each do |datum|
@@ -149,6 +149,7 @@ module Rails3JQueryAutocomplete
           relation = model.select([:id, method] + (options[:extra_data].blank? ? [] : options[:extra_data])) unless options[:full_model]
           items = relation.where(["LOWER(#{method}) LIKE ?", "#{(is_full_search ? '%' : '')}#{term.downcase}%"]) \
             .limit(limit).order(order)
+        end
       end
     end
   end
